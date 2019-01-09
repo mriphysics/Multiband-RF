@@ -86,7 +86,7 @@ Find this bit of code in the top section:
     Nt_dz = 256; %<-- Number of time-points used for single-band design
     d1 = 0.01;
     d2 = 0.01;
-    % Linear-phase refocusing    
+    
     mode = 'cvx';
     pulse_type = 'me';
     phase = 'quadratic';
@@ -132,6 +132,7 @@ The result should look like this
 
 
 ## Singleband examples
+This section will discuss how to use the `dz_single_example` script.
 
 ### A usual singleband refocusing pulse (linear-phase, designed with CVX)
 The most common parameters you would want to change are near the top.

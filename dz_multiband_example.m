@@ -34,7 +34,7 @@ AM_only = 0; %<-- set to 1 for AM pulses
 
 % % %     Select one of the three GIRFs    % % %
 girf = load('h1_GIRF_20140729');disp('Using measured GIRF');
-% girf =load('h2_GIRF_20170901.mat');disp('Using reconstructed GIRF');
+% girf = load('h2_GIRF_20170901.mat');disp('Using reconstructed GIRF');
 % girf = [42*1e-6 42*1e-6];disp('Using analytical GIRF');
 % % % ------------------------------------ % % %
 
@@ -52,15 +52,15 @@ if load_SB_pulse == 1
 %     % Scale to FA
 %     rfsb = FA*pi/180/sum(rfsb)*rfsb;
 else
-    % Example 3: Design a new pulse using the dz_singleband function
-    Nt_dz = 512; %<-- Number of time-points used for single-band design
+    % Example 2: Design a new pulse using the dz_singleband function
+    Nt_dz = 300; %<-- Number of time-points used for single-band design
     d1 = 0.01;
     d2 = 0.01;
-    % Linear-phase refocusing    
-    mode = 'cvx';
-    pulse_type = 'me';
-    phase = 'quadratic';
-    quiet=1;
+    
+    mode = 'cvx'; %<-- set to cvx or ls
+    pulse_type = 'me'; % Set to exc, ref or me (excitation, refocusing or matched-excitation refocusing respectively).
+    phase = 'quadratic'; % Set to linear, minimum, maximum or quadratic.
+    quiet=0;
     [rfsb,tb] = singleband_rf(Nt_dz,tb,flip,mode,pulse_type,phase,d1,d2,quiet);    
 end
 
