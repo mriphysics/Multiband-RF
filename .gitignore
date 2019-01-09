@@ -1,5 +1,6 @@
 *.*
 *.mat
+!/Figures/*.*
 !*.m
 !.gitignore
 !LICENSE
