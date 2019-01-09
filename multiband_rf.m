@@ -164,7 +164,7 @@ switch type
         halfShift = iseven(mb); % shift pattern by 1/2 slice gap to line up with target
         mindurRF = 1;
         de = 0.01; %<-- passband ripple. 
-        [rfmb,Gs] = dz_pins_SI2(rfsb,tb,bs*slthick,slthick,de,maxb1,maxg,maxgslew,...
+        [rfmb,Gs] = dz_pins_arbSB(rfsb,tb,bs*slthick,slthick,de,maxb1,maxg,maxgslew,...
              dt,mindurRF,halfShift);
         dtmb = dt;
     case 'multipins'

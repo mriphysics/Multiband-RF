@@ -1,38 +1,28 @@
-function [ rf90, rf180,tb] = rootflip_fn(n,nb,tblin,bandsep,CS)
+function [ rf90, rf180,tb] = rootflip_fn(n,nb,tblin,bandsep,CS,rftype)
 % 31/10/2015 sas Function that returns a pair of root-flipped pulses for a
 % spin-echo sequence. The returned pulses are scaled in radians and defined
 % in normalized time given by n-time points for the refocusing pulse and
-% 2*n-time points for the excitation pulse.
+% 2*n-time points for the excitation pulse
 
-% Input:
+% 20/03/2017 - Allow for specific rftype.
+
 % n  : number of time points
 % nb : number of bands/slices
-% tblin : Time-bandwidth product
+% tb : Time-bandwidth product
 % bandsep : number of slices of separation between bands (measured from
 % passband centre to passband centre)
 % alignedecho = 0; % 0 = design a minimum-duration 90
 % CS :% Boolean for conjugate Symmetry. 1 for AM pulses
 
-% Output:
-% rf90 - excitation pulse in radians, with length 2*n
-% rf180- refocusing pulse in radians, with length n
-% tb   - the new time-bandwidth product after the lin-phase to min-phase
-% transformation. see eq.10 in Sharma et al. Use this outside the function
-% to find the Bandwidth and hence gradient waveform.
-
-% Adapated from code released by Sharma et al
-% (http://www.vuiis.vanderbilt.edu/~grissowa/software.html)
-
-% Please use under MIT license (Copyright (c) 2015 mriphysics)
-% Samy Abo Seada, Anthony Price, Jo Hajnal and Shaihan Malik. January 2017
-% King's College London
-
 bandsep = bandsep*tblin;
 
 d1 = 0.01;             % combined Mxy ripple, passband
 d2 = 0.01;             % combined Mxy ripple, stopband
-                        % 1 Gauss = 0.1mT, or 1e-4T
-rftype = 'matched';     % 'matched' or '2xrefd' (twice-refocused)
+
+
+if nargin<6
+    rftype = 'matched';     % 'matched' or '2xrefd' (twice-refocused)
+end
 
 osfact = 10; % oversampling factor
 
@@ -41,11 +31,16 @@ N = 2*(n-1); % length of linear-phase filter we will factor to get min-phase fil
 % directly design a MB min-phase filter, whose roots we can flip
 % sas - adjust the ripples depending on 'matched' or 'twice-refocused'
 if strcmp(rftype,'matched')
-  d1 = d1/4; % target beta passband ripple, considering full 90-180 pair
-  d2 = (d2/sqrt(2))^0.25; % target beta stopband ripple, considering full 90-180 pair
+    d1 = d1/4; % target beta passband ripple, considering full 90-180 pair
+    d2 = (d2/sqrt(2))^0.25; % target beta stopband ripple, considering full 90-180 pair
+elseif strcmp(rftype,'single-se')
+    d1 = d1/4;
+    d2 = sqrt(d2);
+elseif strcmp(rftype,'twice-refocused')    
+    d1 = d1/8; % target beta passband ripple, considering twice-refocused
+	d2 = d2.^(1/4); % target beta stopband ripple, considering twice-refocused
 else
-  d1 = d1/8; % target beta passband ripple, considering twice-refocused
-  d2 = d2.^(1/4); % target beta stopband ripple, considering twice-refocused
+    error('user-defined RFtype not recognized')
 end
 
 nn = (0:N/2*osfact)'/(N/2*osfact);  % 0 to 1 - profile indices
@@ -100,6 +95,7 @@ ss = wts(s | d).*double(s(s | d));
 
 % use cvx to do the constrained optimization
 cvx_begin
+cvx_begin quiet
   variable delta(1) 
   variable x(N/2+1)
   minimize( delta )
@@ -112,17 +108,17 @@ x = [x;x(end-1:-1:1)]';
 blin=x;
 % factor the linear phase filter to get a min-phase filter b
 % b = real(fmp(x));
-% sas - Use a new function fmp2 instead of fmp to distinguish from the fmp
-% function in Pauly's RF toolbox, which has lower oversampling can
-% introduce amplified ripples.
+
 b = real(fmp2(x));
 b = b(end:-1:1);
 
 % root flip h!
 ntrials = ceil(tb)*nb*100; % number of monte carlo trials
+% ntrials = ceil(tb)*nb*20; % number of monte carlo trials
 
 % sas- Note How TBW scaling is used in the selection of passband locations
 bp = 2*((1:nb)-1/2-nb/2)*bandsep/n*pi*dinfmin/dinflin; % centers of passbands
+% sas - find bp as coordinates
 
 flip=pi;
 N = length(b); % number of time points in pulse
@@ -130,6 +126,8 @@ N = length(b); % number of time points in pulse
 b = b./max(abs(fft(b))); % normalized beta coefficients
 
 b = b*sin(flip/2 + atan(d1*2)/2); % scale to target flip angle
+
+% sas 26/5
 
 [~,a] = b2amp(b);
 
@@ -140,25 +138,33 @@ r = roots(b); % calculate roots of beta polynomial
 [~,idx] = sort(angle(r)); 
 r = r(idx);
 
+l=1; %Iterative variable for best roots
+ll=1; %Iterative variable for random roots (at mod(ii,50))
+lm=1; %For finding worst roots
+
 btmx = zeros(ntrials,n);
 
 minpeakrf = Inf;
-maxpeakrf = rfinit_max;
+maxpeakrf = rfinit_max; %Consider assigning to zero.
 
 % Try using GA tool-box. If not available on system, resort to simple
 % Monte-carlo.
 try  
-    
-%     error('Test - Default to MC optimization');
-    fprintf('Optimizing Root-pattern using Genetic algorithm\n');
     nPb=nrPb_fn(N-1,(tb/N*pi)*3,bp-pi/N); % Find number of pass-band roots
     if CS==0
         symtype='TS';
     elseif CS==1
         symtype='CS';
+    elseif CS==2
+        symtype='AF';
     end
-    % Number of optimization variables
-    Nvars=floor(nPb/2);
+
+%     error('Default to Monte-Carlo optimization');
+    if strcmp(symtype,'TS')==1 || strcmp(symtype,'CS')==1
+        Nvars=floor(nPb/2);
+    elseif strcmp(symtype,'AF')==1
+        Nvars=nPb;
+    end
 
     costfun=@(p)flip2peak(N-1,r,(tb/N*pi)*3,bp-pi/N,p,symtype,d1);
 
@@ -172,14 +178,23 @@ try
 
     popt=ga(costfun,Nvars,[],[],[],[],zeros(1,Nvars),ones(1,Nvars),[],1:Nvars,options);
     [rf180,optpeak,bestflips] = flip2rf(N-1,r,(tb/N*pi)*3,bp-pi/N,popt,symtype,d1);
+    rf180=rf180(:);
+    % warning('Manually entering rf180 and bestflips');
+    % load('RF321_ae_CS1.mat');
+    % rf180 = RF.rf180;
+    % bestflips = RF.bestflips;
+    % optpeak = 1;
 
-    fprintf('Peak went from %d to %d rad\n',rfinit_max,optpeak);
+%     fprintf('Peak went from %d to %d\n',rfinit_max,optpeak);
 
     % 18/04/16 Undo the -conj() in the islr1 which happens inside flip2rf:
 
     N = length(rf180); % # time points
-    [~,b90di] = rf2ab_sas(rf180,(-N/2:1/2:N/2-1/2)',0); % get beta of 180 pulse
-
+%     [a90,b90di] = BlochSim_CK(rf180,(-N/2:1/2:N/2-1/2)',0); % get beta of 180 pulse
+    [a90,b90di] = rf2ab_sas(rf180,(-N/2:1/2:N/2-1/2)',0); % get beta of 180 pulse
+    % [~,b90_hz] = BlochSim_CK(rf180,(-N/2:1/48:N/2-1/2)',0); % get beta of 180 pulse
+%     [~,b90_hz] = BlochSim_CK(rf180,(0:1/48:N/2-1/2)',0); % get beta of 180 pulse
+    % warning('using dev mode');
     gridx=(-N/2:1/2:N/2-1/2)';
 
     b90d = (b90di.^2)/sqrt(2); % target 90-deg beta profile
@@ -187,16 +202,21 @@ try
 
     bx=fftshift( fft(ifftshift(b90d))/length(b90d) );
 
+    % [~,ax]=GenAn_Minphi(fft(bx));
+    % 11/10 sas Replace with new function for evaluating 'a'
     [~,ax] = b2amp(bx);
 
+    % rf90 = -1i*conj(islr1(ax,bx));
+    % 18/04/2016 use new islr function
     rf90 = -1i*conj(islr(ax,bx));
     if CS==1
         rf90=real(rf90);
     end
 
+
 catch ME
     
-    fprintf('Error in Genetic-algorithm optimization. Using Monte-carlo optimization\n');
+    fprintf('Genetic Algorithm toolbox not found. Using Monte-carlo optimization');
     for ii = 1:ntrials
     
     % determine which indices to flip
@@ -229,12 +249,28 @@ catch ME
 %     save result if better
     if max(abs(rft)) < minpeakrf
         minpeakrf = max(abs(rft));
+        bestflips = doflip;
         rfout = rft;
+        bout=bt;
+        aout=at;
+%         bestroots = rt;
+% sas - replace bestroots with a cell that stores the roots everytime a
+% better solution is found. Used in FIR decomposition.
+        bestroots{l} = rt;
+        l=l+1;
+        
+    elseif max(abs(rft)) > maxpeakrf
+        maxpeakrf = max(abs(rft));
+        worstroots{lm} = rt;
+        lm=lm+1;
     end
     
     if rem(ii,50) == 0
         fprintf('Iteration %d of %d. Peak RF: %0.2d rad. Peak init RF: %0.2d rad.\n', ...
-            ii,ntrials,minpeakrf,rfinit_max);        
+            ii,ntrials,minpeakrf,rfinit_max);
+      anyroots{ll}=rt;
+      ll=ll+1;
+        
     end
     
     end
@@ -248,6 +284,7 @@ catch ME
 
     N = length(rf180); % # time points
 
+%     [a90,b90di] = BlochSim_CK(rf180,(-N/2:1/2:N/2-1/2)',0); % get beta of 180 pulse
     [a90,b90di] = rf2ab_sas(rf180,(-N/2:1/2:N/2-1/2)',0); % get beta of 180 pulse
 
     b90d = (b90di.^2)/sqrt(2); % target 90-deg beta profile
@@ -262,10 +299,5 @@ catch ME
     if CS==1
         rf90=real(rf90);
     end
-    
 
 end
-
-% Output columns
-rf90 = rf90(:);
-rf180 = rf180(:);

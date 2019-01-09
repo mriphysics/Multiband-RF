@@ -1,7 +1,7 @@
 clear all;
 close all;
 
-Nt = 64; %<-- set number of time-points
+Nt = 2048; %<-- set number of time-points
 gamma_mT = 2*pi*4.257*1e4; %<--- same as in minTime gradient function
 
 %<-- Set what type of multiband pulse. Choose from
@@ -17,29 +17,30 @@ gamma_mT = 2*pi*4.257*1e4; %<--- same as in minTime gradient function
 %    'pins' : PINS pulses (Norris 2011)
 %    'multipins' : MultiPINS pulses (Eichner 2014)
 
-mb_type = 'rf'; 
+load_SB_pulse = 0;  %<-- set to 1 to use precalculated Single-band pulse
+flip = 180*pi/180; %<-- set flip-angle.
+
+mb_type = 'ts'; 
 mb = 4; %<-- Number of slices (Multiband factor)
 tb = 6; %<-- Time-bandwidth product.
 bs = 10;%<-- band separation (in units of slice-thicknesses)
-
 slthick = 2*1e-3; %<-- slice thickness [mm]
+gradientslopes = 1; %<-- Set to 1 for sloping gradients at start and end.
+
 maxb1 = 13*1e-3; % <--- peak B1 [mT]
 maxg=40; %<-- maximum gradient amplitude for VERSE [mT/m]
 maxgslew = 200*1e3; %Maximum gradient slew-rate for VERSE [mT/m/s]
 AM_only = 0; %<-- set to 1 for AM pulses
-flip = 180*pi/180; %<-- set flip-angle.
 
 % % %     Select one of the three GIRFs    % % %
 % girf = load('h1_GIRF_20140729');disp('Using measured GIRF');
 % girf =load('h2_GIRF_20170901.mat');disp('Using reconstructed GIRF');
 girf = [42*1e-6 42*1e-6];disp('Using analytical GIRF');
 % % % ------------------------------------ % % %
-gradientslopes = 1;
-return_gdem = 0; %<-- Options for GIRF-correction. 
+
+return_gdem = 1; %<-- Options for GIRF-correction. 
                  %    If 1 the demanded gradient is returned.
 
-plot_phase = 1; %<-- set to 1 to plot phase 
-load_SB_pulse = 1;  %<-- set to 1 to use precalculated Single-band pulse
 if load_SB_pulse == 1
     % Example 1: Load pre-designed SB pulses
     load('SB_SLR_cvxdesign_flip180_quad_Mar27.mat');
@@ -58,7 +59,6 @@ if load_SB_pulse == 1
 else
     % Example 3: Design a new pulse using the dz_singleband function
     Nt_dz = 256; %<-- Number of time-points used for single-band design
-    tb = 8;
     d1 = 0.01;
     d2 = 0.01;
     % Linear-phase refocusing    
@@ -77,6 +77,7 @@ end
     maxb1,maxg,maxgslew,AM_only,girf,return_gdem,gradientslopes);
 
 %% Run Bloch simulations.
+plot_phase = 0; %<-- set to 1 to plot phase 
 fprintf('\nRunning Bloch simulations...\n')
 spos = (1:mb)-(mb+1)/2; 
 
@@ -97,8 +98,6 @@ else
 end
 
 G3 = @(Gz) [0*Gz(:) 0*Gz(:) Gz(:)];
-
-% mxy_display = mxy_fa;
 
 % Simulate Constant gradient MB pulse
 [~,~,~,~,a,b] = blochsim_CK(rfmb,G3(Gs),pos,ones([Nz 1]),zeros([Nz 1]),'dt',dtmb);

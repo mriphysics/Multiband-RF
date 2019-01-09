@@ -102,15 +102,23 @@ switch phase
     ss = wts(s | d).*double(s(s | d));
 
     % use cvx to do the constrained optimization
-    cvx_begin %quiet
-      variable delta(1) 
-      variable x(N/2+1)
-      minimize( delta )
-      subject to
-          -delta*dd <= Ad*x - dd <= delta*dd + delta*d2^2/(2*d1)*ss        
-%         -delta*dd <= Ad*x - dd <= delta*dd + delta*d2/d1*ss        
-    cvx_end
-
+    if quiet == 1
+        cvx_begin quiet
+          variable delta(1) 
+          variable x(N/2+1)
+          minimize( delta )
+          subject to
+              -delta*dd <= Ad*x - dd <= delta*dd + delta*d2^2/(2*d1)*ss           
+        cvx_end
+    else        
+        cvx_begin
+          variable delta(1) 
+          variable x(N/2+1)
+          minimize( delta )
+          subject to
+              -delta*dd <= Ad*x - dd <= delta*dd + delta*d2^2/(2*d1)*ss            
+        cvx_end
+    end
     x = [x;x(end-1:-1:1)]';
 
     blin=x;

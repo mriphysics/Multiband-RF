@@ -1,18 +1,15 @@
 function [rf,tb,rf_me_exc] = singleband_rf(Nt,tb,flip,mode,type,phase,d1,d2,quiet)
 
-% if nargout <2
-%     rf_me_exc = []
-% end;
+% Functions checks
 if and(and(strcmp(mode,'cvx'),strcmp(phase,'linear')),mod(Nt,2));
     error('Linear Design needs even number of time-points');
 end
-if and(strcmp(type,'exc'),flip>pi/2)
-%     warning('excitation flip angle over 90 deg. Setting pulse type to "refocusing"');
-%     type = 'ref';
 
+if and(strcmp(type,'exc'),flip>pi/2)
     warning('Excitation flip angle over 90 deg. Setting flip to 90');
     flip = pi/2;
 end
+
 % Change d1 & d2 depending on pulse type ('exc','ref','me')
 switch type
     case 'exc' %<-- SLR excitation pulse
@@ -42,6 +39,7 @@ switch phase
         error('Phase type not recognized \n Use linear, minimum, maximum or quadratic');
 end
 % ------------------------------- %
+% Design beta filter using either cvx or ls
 switch mode
     case 'cvx'
         b = dz_cvx(Nt,tb,d1,d2,quiet,phase);
@@ -51,6 +49,11 @@ switch mode
         error('Optimization mode not recognized. Choose cvx or ls');
 end
     
+% ------------------------------- %
+% Adjust time bandwidth product for non-linear phase pulses.
+% Produce maximum phase pulses by time-reversing minimum-phase pulses
+% Produce quadratic phase pulses by flipping all roots on negative halve of
+% the unit circle.
 switch phase
     case 'linear'
         
@@ -106,21 +109,24 @@ switch phase
         b = poly(leja(r));
         % Normalise filter response.
         b = b/max(abs(freqz(b)));
+        if quiet == 0
+            figure;
+            cscatter(r);
+            ylabel('Imaginary axis');
+            xlabel('Real axis');
+        end
 end
 
 % Apply flip angle
 b = b*sin(flip/2); % scale to target flip angle    
-% b = b*sin(flip/2 + atan(d1)/2); % scale to target flip angle    
-% b = b*sin(flip/2 + atan(2*d1)); % scale to target flip angle    
-% b = b*sin(flip/2 + atan(2*d1)); % scale to target flip angle    
-
+% calculate the alpha-SLR filter from the beta
 [~,a] = b2amp(b,64);
+% calculate RF from alpha and beta filter
+rf = 1i*(islr(a,b));
 
-% rf = -imag(islr(a,b));
-rf = 1i*(islr(a,b)); %<-- need both real and imag for quadratic pulses.
-
-if and(strcmp(type,'me'),nargout>2)
-%     [~,blin] = rf2ab_sas(rf,(-N/2:N/2)-1/2,0);
+% If designing a matched-excitation pulse and an excitation pulse is
+% requested, design it from the refocusing pulse.
+if and(strcmp(type,'me'),nargout>2) 
     fprintf('Designing matched excitation pulse\n');
     [~,b90] = rf2ab_sas(rf,(-Nt/2:1/2:Nt/2-1/2)',0); % get beta of 180 pulse
     b90d = (b90.^2)/sqrt(2); % target 90-deg beta profile
@@ -128,13 +134,14 @@ if and(strcmp(type,'me'),nargout>2)
     bx=fftshift( fft(ifftshift(b90d))/length(b90d));
     [~,ax]=b2amp(bx);
     rf_me_exc = -1i*conj(islr(ax,bx));
-elseif and(~strcmp(type,'me'),nargout>2) %<--
+elseif and(~strcmp(type,'me'),nargout>2)
     warning('Matched excitation pulse requested for non matched-design. Returning halve-amplitude RF')
     rf_me_exc = rf/2;
 else
     rf_me_exc = [];
 end
 
+% Debug code, if desired set to 1.
 if 0
    fh = figure;
    plot(abs(fftshift(fft(b))));
