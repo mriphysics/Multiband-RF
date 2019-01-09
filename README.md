@@ -97,4 +97,4 @@ The result should be the same (as far as I checked..).
  mxy = 2*conj(aexc(:,end)).*bexc(:,end).*bref(:,end).^2;
 ```
 The result should look like this:
-<img src="Figures/me_quad_SBexample.png" alt="me_quad_SBexample" width="100%">
+<img src="/Figures/me_quad_SBexample.png" alt="me_quad_SBexample" width="100%">
