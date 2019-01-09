@@ -1,0 +1,9 @@
+*.*
+*.mat
+!*.m
+!.gitignore
+!LICENSE
+!*.md
+!/bin/*.*
+*.log
+

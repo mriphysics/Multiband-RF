@@ -1,0 +1,9 @@
+#No JPEG files
+*.JPG
+*.GIF
+*.fig
+#*.png
+*.docx
+*.pdn
+*.pdf
+*.xls
