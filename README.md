@@ -114,12 +114,15 @@ girf = load('h1_GIRF_20140729');disp('Using measured GIRF');
 girf =load('h2_GIRF_20170901.mat');disp('Using reconstructed GIRF');
 girf = [42*1e-6 42*1e-6];disp('Using analytical GIRF');
 ```
-
-The variable `return_gdem` controls which of the two gradients (Demanded or GIRF-filtered) is returned.
-
 The result should look like this
 <img src="Figures/me_quad_MBexample.png" alt="me_quad_MBexample" width="100%">
 
+Notice that the slice-profile has some errors - this is because the slice profile is simulated using the "demand" gradient.
+The variable `return_gdem` controls which of the two gradients (Demanded or GIRF-filtered) is returned.
+
+Setting this to 0 will give the predicted slice profile, if the demand gradient is played on a scanner.
+This will look like this
+<img src="Figures/me_quad_MBgexample.png" alt="me_quad_MBgexample" width="100%">
 
 ### PINS refocusing pulse
 Designing a PINS pulse can easily be done by setting `mb_type` to 'pins'
