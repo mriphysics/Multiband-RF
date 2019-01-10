@@ -4,7 +4,7 @@ close all;
 % Basic configurations - Load or design a new base SB pulse?
 Nt = 2048; %<-- set number of time-points
 gamma_mT = 2*pi*4.257*1e4; %<--- same as in minTime gradient function
-load_SB_pulse = 0;  %<-- set to 1 to use precalculated Single-band pulse
+load_SB_pulse = 1;  %<-- set to 1 to use precalculated Single-band pulse
 flip = 180*pi/180; %<-- set flip-angle.
 
 % ---- Set what type of multiband pulse. Choose from ---- %%
@@ -20,7 +20,7 @@ flip = 180*pi/180; %<-- set flip-angle.
 %    'pins' : PINS pulses (Norris 2011)
 %    'multipins' : MultiPINS pulses (Eichner 2014)
 
-mb_type = 'vmbg'; 
+mb_type = 'no'; 
 mb = 4; %<-- Number of slices (Multiband factor)
 tb = 6; %<-- Time-bandwidth product.
 bs = 10;%<-- band separation (in units of slice-thicknesses)
@@ -38,7 +38,7 @@ girf = load('h1_GIRF_20140729');disp('Using measured GIRF');
 % girf = [42*1e-6 42*1e-6];disp('Using analytical GIRF');
 % % % ------------------------------------ % % %
 
-return_gdem = 0; %<-- Options for GIRF-correction. 
+return_gdem = 1; %<-- Options for GIRF-correction. 
                  %    If 1 the demanded gradient is returned.
 if load_SB_pulse == 1
     % Example 1: Load pre-designed SB pulses
