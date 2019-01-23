@@ -6,5 +6,7 @@
 !LICENSE
 !*.md
 !/bin/*.*
+!verse-mb_repo/bin/*.*
+!AM_multiband_repo/bin/*.*
 *.log
 
