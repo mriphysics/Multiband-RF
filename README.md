@@ -19,7 +19,10 @@ Multiband pulses:
 This code relies on the following repos:
 * AM_multiband  (https://github.com/mriphysics/AM_multiband)
 * verse-mb (https://github.com/mriphysics/verse-mb)
+
 Both have already been incorporated in this repo, for convenience. At the time of writing they are exact copies.
+
+PINS and Multi-PINS code has been further developed from Will Grissoms' 
 
 Also relies on
 *  CVX from (http://cvxr.com/cvx/). 
