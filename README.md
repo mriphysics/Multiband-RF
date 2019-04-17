@@ -22,7 +22,7 @@ This code relies on the following repos:
 
 Both have already been incorporated in this repo, for convenience. At the time of writing they are exact copies.
 
-PINS and Multi-PINS code has been further developed from Will Grissoms' 
+PINS and Multi-PINS code has been further developed from Will Grissoms' repo: (https://bitbucket.org/wgrissom/lowpeakpowermbrf).
 
 Also relies on
 *  CVX from (http://cvxr.com/cvx/). 
